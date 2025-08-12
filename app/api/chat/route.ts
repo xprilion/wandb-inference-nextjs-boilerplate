@@ -1,4 +1,4 @@
-import { createWandbClient } from '@/lib/wandb-client';
+import { createWandbClient, getSettingsFromHeaders } from '@/lib/wandb-client';
 
 export const runtime = 'edge';
 
@@ -6,8 +6,11 @@ export async function POST(req: Request) {
   try {
     const { messages, model = 'moonshotai/Kimi-K2-Instruct' } = await req.json();
 
-    // Create WandB client
-    const wandbClient = createWandbClient();
+    // Get user settings from headers
+    const { apiKey, team, project } = getSettingsFromHeaders(req);
+    
+    // Create WandB client with user settings
+    const wandbClient = createWandbClient(apiKey || undefined, team || undefined, project || undefined);
 
     // Use the WandB client directly for streaming
     const response = await wandbClient.chat.completions.create({

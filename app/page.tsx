@@ -1,75 +1,44 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Header } from "@/components/header";
 import { Playground } from "@/components/playground";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { WandbSettings, getWandbSettings } from "@/lib/settings";
 
 export default function Home() {
+  const [userSettings, setUserSettings] = useState<WandbSettings | null>(null);
+
+  useEffect(() => {
+    setUserSettings(getWandbSettings());
+  }, []);
+
+  const handleSettingsChange = (settings: WandbSettings | null) => {
+    setUserSettings(settings);
+  };
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onSettingsChange={handleSettingsChange} />
       
-      <main className="py-8">
+      {/* Hero Section - Fixed height to prevent layout shifts */}
+      <section className="py-12 lg:py-16 border-b">
         <div className="container mx-auto px-4 max-w-7xl">
-          {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl mb-4">
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
               WandB Inference{" "}
               <span className="bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
                 Playground
               </span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Explore the power of AI with WandB Inference. Try different models and tasks 
-              including advanced reasoning, code generation, and vision capabilities.
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Explore cutting-edge AI models with advanced reasoning, code generation, and vision capabilities.
             </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-12">
-              <Card>
-                <CardHeader className="text-center">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">🧠</span>
-                  </div>
-                  <CardTitle className="text-lg">Multiple Models</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Access cutting-edge models like DeepSeek R1, Qwen3, GPT OSS, and Llama through WandB Inference
-                  </CardDescription>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="text-center">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">⚡</span>
-                  </div>
-                  <CardTitle className="text-lg">Real-time Streaming</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Experience fast, real-time AI responses with streaming capabilities
-                  </CardDescription>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="text-center">
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <span className="text-2xl">🔧</span>
-                  </div>
-                  <CardTitle className="text-lg">Easy Integration</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Built with Next.js and OpenAI-compatible APIs for seamless integration
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </div>
           </div>
-
-          {/* Playground */}
-          <Playground />
         </div>
+      </section>
+
+      {/* Main Playground */}
+      <main className="py-8">
+        <Playground userSettings={userSettings} onSettingsChange={handleSettingsChange} />
       </main>
 
       {/* Footer */}
@@ -98,7 +67,7 @@ export default function Home() {
             </div>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
               <a
-                href="https://docs.wandb.ai"
+                href="https://docs.wandb.ai/guides/inference/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-foreground"

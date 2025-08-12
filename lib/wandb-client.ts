@@ -1,28 +1,37 @@
 import OpenAI from 'openai';
 
 // WandB Inference client configuration
-export function createWandbClient() {
-  const apiKey = process.env.WANDB_API_KEY || process.env.OPENAI_API_KEY;
-  const team = process.env.WANDB_TEAM;
-  const project = process.env.WANDB_PROJECT;
+export function createWandbClient(apiKey?: string, team?: string, project?: string) {
+  const finalApiKey = apiKey || process.env.WANDB_API_KEY || process.env.OPENAI_API_KEY;
+  const finalTeam = team || process.env.WANDB_TEAM;
+  const finalProject = project || process.env.WANDB_PROJECT;
 
-  if (!apiKey) {
-    throw new Error('WANDB_API_KEY or OPENAI_API_KEY environment variable is required');
+  if (!finalApiKey) {
+    throw new Error('WandB API key is required');
   }
 
-  if (!team || !project) {
-    throw new Error('WANDB_TEAM and WANDB_PROJECT environment variables are required');
+  if (!finalTeam || !finalProject) {
+    throw new Error('WandB team and project are required');
   }
 
   return new OpenAI({
     baseURL: 'https://api.inference.wandb.ai/v1',
-    apiKey,
+    apiKey: finalApiKey,
     defaultHeaders: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'OpenAI-Project': `${team}/${project}`,
+      'Authorization': `Bearer ${finalApiKey}`,
+      'OpenAI-Project': `${finalTeam}/${finalProject}`,
     },
   });
+}
+
+// Helper function to extract settings from request headers
+export function getSettingsFromHeaders(request: Request) {
+  const apiKey = request.headers.get('X-WandB-API-Key');
+  const team = request.headers.get('X-WandB-Team');
+  const project = request.headers.get('X-WandB-Project');
+  
+  return { apiKey, team, project };
 }
 
 // Available models for different tasks

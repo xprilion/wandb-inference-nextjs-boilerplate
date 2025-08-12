@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,11 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TASKS, Task, getTasksByCategory } from '@/lib/tasks';
 import { MODELS, ALL_MODELS } from '@/lib/wandb-client';
-import { isWandbConfigured, getWandbSettings, WandbSettings } from '@/lib/settings';
-import { SettingsDialog } from '@/components/settings-dialog';
-import { ExportDialog } from '@/components/export-dialog';
-import { getRequestDataFromPlayground, RequestData } from '@/lib/code-generators';
-import { Loader2, Play, Copy, Download, Sparkles, Code, Brain, Eye, Palette, BarChart, Zap, MessageSquare, Settings, ExternalLink, Code2 } from 'lucide-react';
+import { Loader2, Play, Copy, Download, Sparkles, Code, Brain, Eye, Palette, BarChart, Zap, MessageSquare } from 'lucide-react';
 
 interface ApiModel {
   id: string;
@@ -36,12 +32,7 @@ const categoryIcons = {
   analysis: BarChart,
 };
 
-interface PlaygroundProps {
-  userSettings?: WandbSettings | null;
-  onSettingsChange?: (settings: WandbSettings | null) => void;
-}
-
-export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) {
+export function Playground() {
   // Core state
   const [mode, setMode] = useState<PlaygroundMode>('templates');
   const [selectedTask, setSelectedTask] = useState<Task>(TASKS[0]);
@@ -57,23 +48,9 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
   
-  // Settings state
-  const [isConfigured, setIsConfigured] = useState(false);
-  const [currentSettings, setCurrentSettings] = useState<WandbSettings | null>(null);
-  
-  // Export state
-  const [lastRequestData, setLastRequestData] = useState<RequestData | null>(null);
-  
   // UI state
   const [activeTab, setActiveTab] = useState('all');
   const [isMobile, setIsMobile] = useState(false);
-
-  // Check configuration and load settings
-  useEffect(() => {
-    const settings = userSettings || getWandbSettings();
-    setCurrentSettings(settings);
-    setIsConfigured(isWandbConfigured());
-  }, [userSettings]);
 
   // Detect mobile
   useEffect(() => {
@@ -89,19 +66,13 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
   // Fetch models from API
   useEffect(() => {
     const fetchModels = async () => {
-      if (mode !== 'blank' || !isConfigured || !currentSettings) return;
+      if (mode !== 'blank') return;
       
       setIsLoadingModels(true);
       setModelsError(null);
       
       try {
-        const response = await fetch('/api/models', {
-          headers: {
-            'X-WandB-API-Key': currentSettings.apiKey,
-            'X-WandB-Team': currentSettings.team,
-            'X-WandB-Project': currentSettings.project,
-          },
-        });
+        const response = await fetch('/api/models');
         const data = await response.json();
         
         if (!response.ok) {
@@ -120,7 +91,7 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
     };
 
     fetchModels();
-  }, [mode, isConfigured, currentSettings]);
+  }, [mode]);
 
   // Memoized model options
   const availableModels = useMemo(() => {
@@ -161,39 +132,9 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
     }
   };
 
-  // Handle settings change
-  const handleSettingsChange = (settings: WandbSettings | null) => {
-    setCurrentSettings(settings);
-    setIsConfigured(settings !== null);
-    onSettingsChange?.(settings);
-  };
-
-  // Update request data whenever form changes
-  const updateRequestData = useCallback(() => {
-    if (!isConfigured || !currentSettings || !prompt.trim()) {
-      setLastRequestData(null);
-      return;
-    }
-
-    const requestData = getRequestDataFromPlayground(
-      mode,
-      selectedTask,
-      prompt,
-      selectedModel,
-      imageUrl,
-      currentSettings
-    );
-    setLastRequestData(requestData);
-  }, [mode, selectedTask, prompt, selectedModel, imageUrl, currentSettings, isConfigured]);
-
-  // Update request data when form changes
-  useEffect(() => {
-    updateRequestData();
-  }, [updateRequestData]);
-
   // Generate response
   const handleGenerate = async () => {
-    if (!prompt.trim() || !isConfigured || !currentSettings) return;
+    if (!prompt.trim()) return;
 
     setIsGenerating(true);
     setResponse('');
@@ -225,9 +166,6 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-WandB-API-Key': currentSettings.apiKey,
-          'X-WandB-Team': currentSettings.team,
-          'X-WandB-Project': currentSettings.project,
         },
         body: JSON.stringify(requestBody),
       });
@@ -261,89 +199,6 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  // Setup instructions component
-  const SetupInstructions = () => (
-    <div className="w-full max-w-4xl mx-auto">
-      <Card className="border-dashed border-2">
-        <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Settings className="w-8 h-8 text-orange-600 dark:text-orange-400" />
-          </div>
-          <CardTitle className="text-2xl">Setup Required</CardTitle>
-          <CardDescription className="text-lg">
-            Configure your WandB credentials to start using the AI playground
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="bg-muted p-6 rounded-lg">
-            <h3 className="font-semibold mb-4 flex items-center">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm mr-3">1</span>
-              Get your WandB API Key
-            </h3>
-            <p className="text-muted-foreground mb-3">
-              Visit WandB to get your API key for accessing the inference service.
-            </p>
-            <Button variant="outline" asChild>
-              <a
-                href="https://wandb.ai/authorize"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Get API Key
-              </a>
-            </Button>
-          </div>
-
-          <div className="bg-muted p-6 rounded-lg">
-            <h3 className="font-semibold mb-4 flex items-center">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm mr-3">2</span>
-              Configure Settings
-            </h3>
-            <p className="text-muted-foreground mb-3">
-              Enter your WandB team name, project name, and API key in the settings dialog.
-            </p>
-            <SettingsDialog 
-              onSettingsChange={handleSettingsChange}
-              trigger={
-                <Button>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Open Settings
-                </Button>
-              }
-            />
-          </div>
-
-          <div className="bg-muted p-6 rounded-lg">
-            <h3 className="font-semibold mb-4 flex items-center">
-              <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm mr-3">3</span>
-              Start Playing!
-            </h3>
-            <p className="text-muted-foreground">
-              Once configured, you&apos;ll have access to 15+ AI tasks and can experiment with various models including GPT OSS, DeepSeek R1, Qwen3, and Llama 4 Scout.
-            </p>
-          </div>
-
-          <div className="text-center pt-4">
-            <p className="text-sm text-muted-foreground">
-              Your credentials are stored locally in your browser and never sent to our servers.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  // If not configured, show setup instructions
-  if (!isConfigured) {
-    return (
-      <div className="w-full max-w-7xl mx-auto p-4 md:p-6">
-        <SetupInstructions />
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6">
@@ -580,33 +435,19 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={handleGenerate} 
-                  disabled={isGenerating || !prompt.trim() || !isConfigured}
-                  className="flex-1 sm:flex-initial"
-                  size={isMobile ? "default" : "lg"}
-                >
-                  {isGenerating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-4 w-4" />
-                  )}
-                  {isGenerating ? 'Generating...' : 'Generate'}
-                </Button>
-                
-                {lastRequestData && (
-                  <ExportDialog 
-                    requestData={lastRequestData}
-                    trigger={
-                      <Button variant="outline" size={isMobile ? "default" : "lg"} className="flex-1 sm:flex-initial">
-                        <Code2 className="mr-2 h-4 w-4" />
-                        Export Code
-                      </Button>
-                    }
-                  />
+              <Button 
+                onClick={handleGenerate} 
+                disabled={isGenerating || !prompt.trim()}
+                className="w-full sm:w-auto"
+                size={isMobile ? "default" : "lg"}
+              >
+                {isGenerating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="mr-2 h-4 w-4" />
                 )}
-              </div>
+                {isGenerating ? 'Generating...' : 'Generate'}
+              </Button>
             </CardContent>
           </Card>
 
@@ -615,19 +456,19 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
             <Card className="transition-all duration-300 ease-in-out">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                                   <CardTitle>Response</CardTitle>
-                 {response && (
-                   <div className="flex items-center space-x-2">
-                     <Button variant="outline" size="sm" onClick={copyToClipboard}>
-                       <Copy className="h-4 w-4" />
-                       {!isMobile && <span className="ml-2">Copy</span>}
-                     </Button>
-                     <Button variant="outline" size="sm" onClick={downloadResponse}>
-                       <Download className="h-4 w-4" />
-                       {!isMobile && <span className="ml-2">Download</span>}
-                     </Button>
-                   </div>
-                 )}
+                  <CardTitle>Response</CardTitle>
+                  {response && (
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                        <Copy className="h-4 w-4" />
+                        {!isMobile && <span className="ml-2">Copy</span>}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={downloadResponse}>
+                        <Download className="h-4 w-4" />
+                        {!isMobile && <span className="ml-2">Download</span>}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>

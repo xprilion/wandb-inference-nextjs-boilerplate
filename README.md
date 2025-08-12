@@ -9,6 +9,11 @@ A comprehensive AI playground built with [Next.js](https://nextjs.org) and [Wand
 - **Advanced Reasoning**: Support for complex problem solving and mathematical reasoning
 - **Vision Models**: Support for image analysis using Llama-4-Scout-17B-16E-Instruct
 - **Model-wise Showcase**: Browse tasks organized by AI model capabilities
+- **User Settings**: Configure your own WandB credentials with a user-friendly setup wizard
+- **Local Storage**: Secure credential storage in browser (never sent to servers)
+- **Setup Flow**: Guided onboarding with step-by-step instructions
+- **Code Export**: Export requests as cURL, Python, or TypeScript code for easy integration
+- **Syntax Highlighting**: Beautiful code display with copy/download functionality
 - **Modern UI**: Clean, HuggingFace-inspired design with light/dark mode support
 - **Type-safe**: Built with TypeScript for better development experience
 - **Responsive Design**: Works seamlessly across desktop and mobile devices
@@ -29,8 +34,19 @@ cd wandb-inference-nextjs-boilerplate
 pnpm install
 ```
 
-### 2. Environment Setup
+### 2. Configuration
 
+You have two options for configuring WandB credentials:
+
+#### Option A: UI Settings (Recommended)
+1. Run the application: `pnpm dev`
+2. Click the **Settings** button in the top-right corner
+3. Follow the setup wizard:
+   - Get your API key from [wandb.ai/authorize](https://wandb.ai/authorize)
+   - Enter your team name and project name
+   - Test the connection and save
+
+#### Option B: Environment Variables
 Create a `.env.local` file in the project root:
 
 ```env
@@ -43,10 +59,7 @@ WANDB_PROJECT=your-project-name
 OPENAI_API_KEY=your-wandb-api-key-here
 ```
 
-To get your WandB API key:
-1. Visit [https://wandb.ai/authorize](https://wandb.ai/authorize)
-2. Copy your API key
-3. Set up your team and project in WandB
+**Note**: UI settings take precedence over environment variables and are stored securely in your browser's local storage.
 
 ### 3. Run Development Server
 
@@ -124,6 +137,25 @@ The playground includes 15+ different AI task examples:
 - `meta-llama/Llama-4-Scout-17B-16E-Instruct` - Llama 4 Scout Vision
 
 ## 🛠 Usage Examples
+
+### Code Export Feature
+
+Every request you make in the playground can be exported as ready-to-use code:
+
+- **📱 Responsive Design**: Mobile-optimized export dialog that works on all devices
+- **🔧 cURL Command**: Direct HTTP requests for testing in terminal or API clients
+- **🐍 Python Code**: Complete implementation using OpenAI SDK with WandB Inference
+- **⚡ TypeScript Code**: Modern Node.js/browser applications with async/await
+
+**Features:**
+- **📋 One-click copy**: Copy installation commands and code separately
+- **📥 Download files**: Get properly named files (.sh, .py, .ts) for your project
+- **🎯 Step-by-step guide**: Detailed instructions for each implementation
+- **🔒 Security**: API keys are masked (e.g., `wb12...34ef`) for safe sharing
+- **💡 Package installation**: Commands provided for required dependencies
+- **🎨 Syntax highlighting**: Beautiful code display with proper formatting
+
+Click the "Export Code" button after making any request to access the comprehensive integration guide.
 
 ### Basic Text Generation
 
