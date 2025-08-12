@@ -133,6 +133,11 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
     return ALL_MODELS;
   }, [mode, apiModels]);
 
+  // Helper function to safely get model name
+  const getModelName = (modelId: string): string => {
+    return availableModels[modelId as keyof typeof availableModels] || modelId;
+  };
+
   // Handle task changes
   const handleTaskChange = (taskId: string) => {
     const task = TASKS.find(t => t.id === taskId);
@@ -527,25 +532,34 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="model">Model</Label>
-                  {isLoadingModels ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select value={selectedModel} onValueChange={setSelectedModel}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(availableModels).map(([modelId, modelName]) => (
-                          <SelectItem key={modelId} value={modelId}>
-                            <div className="flex flex-col">
-                              <span>{modelName}</span>
-                              <span className="text-xs text-muted-foreground">{modelId}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                                     {isLoadingModels ? (
+                     <Skeleton className="h-14 w-full" />
+                   ) : (
+                     <Select value={selectedModel} onValueChange={setSelectedModel}>
+                       <SelectTrigger className="h-auto min-h-[3rem] p-3 text-left">
+                         <SelectValue placeholder="Select a model">
+                           {selectedModel ? (
+                             <div className="flex flex-col items-start space-y-0.5 w-full">
+                               <span className="font-semibold text-sm leading-tight">{getModelName(selectedModel)}</span>
+                               <span className="text-xs text-muted-foreground leading-tight truncate w-full pr-6">{selectedModel}</span>
+                             </div>
+                           ) : (
+                             <span className="text-muted-foreground">Select a model</span>
+                           )}
+                         </SelectValue>
+                       </SelectTrigger>
+                       <SelectContent className="max-h-[300px]">
+                         {Object.entries(availableModels).map(([modelId, modelName]) => (
+                           <SelectItem key={modelId} value={modelId} className="py-3">
+                             <div className="flex flex-col items-start space-y-1 w-full">
+                               <span className="font-medium text-sm">{modelName}</span>
+                               <span className="text-xs text-muted-foreground truncate max-w-[300px]">{modelId}</span>
+                             </div>
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   )}
                   {modelsError && (
                     <p className="text-xs text-destructive mt-1">
                       Failed to load models: {modelsError}
