@@ -23,10 +23,10 @@ export async function POST(req: Request) {
     }
 
     // Get user settings from headers
-    const { apiKey, team, project } = getSettingsFromHeaders(req);
+    const { apiKey } = getSettingsFromHeaders(req);
     
     // Create WandB client with user settings
-    const wandbClient = createWandbClient(apiKey || undefined, team || undefined, project || undefined);
+    const wandbClient = createWandbClient(apiKey || undefined);
 
     const response = await wandbClient.chat.completions.create({
       model,

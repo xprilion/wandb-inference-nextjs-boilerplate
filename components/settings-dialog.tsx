@@ -23,8 +23,8 @@ interface SettingsDialogProps {
 export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState("");
-  const [team, setTeam] = useState("");
-  const [project, setProject] = useState("");
+
+
   const [showApiKey, setShowApiKey] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -36,8 +36,8 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
       const settings = getWandbSettings();
       if (settings) {
         setApiKey(settings.apiKey);
-        setTeam(settings.team);
-        setProject(settings.project);
+
+
       }
       setErrors([]);
       setConnectionStatus('idle');
@@ -45,7 +45,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
   }, [open]);
 
   const testConnection = async () => {
-    const tempSettings = { apiKey, team, project };
+    const tempSettings = { apiKey };
     const validationErrors = validateWandbSettings(tempSettings);
     
     if (validationErrors.length > 0) {
@@ -63,8 +63,8 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
         headers: {
           'Content-Type': 'application/json',
           'X-WandB-API-Key': apiKey,
-          'X-WandB-Team': team,
-          'X-WandB-Project': project,
+
+
         },
       });
 
@@ -84,7 +84,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
   };
 
   const handleSave = () => {
-    const settings: WandbSettings = { apiKey, team, project };
+    const settings: WandbSettings = { apiKey };
     const validationErrors = validateWandbSettings(settings);
     
     if (validationErrors.length > 0) {
@@ -100,8 +100,8 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
   const handleClear = () => {
     clearWandbSettings();
     setApiKey("");
-    setTeam("");
-    setProject("");
+
+
     setErrors([]);
     setConnectionStatus('idle');
     onSettingsChange?.(null);
@@ -141,8 +141,8 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
                   <ExternalLink className="h-3 w-3 ml-1" />
                 </a>
               </li>
-              <li>Enter your team name (e.g., &quot;my-team&quot;)</li>
-              <li>Enter your project name (e.g., &quot;ai-playground&quot;)</li>
+
+
               <li>Test the connection and save</li>
             </ol>
           </div>
@@ -171,34 +171,16 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
             </div>
           </div>
 
-          {/* Team */}
-          <div className="space-y-2">
-            <Label htmlFor="team">Team Name</Label>
-            <Input
-              id="team"
-              placeholder="e.g., my-team"
-              value={team}
-              onChange={(e) => setTeam(e.target.value)}
-            />
-          </div>
 
-          {/* Project */}
-          <div className="space-y-2">
-            <Label htmlFor="project">Project Name</Label>
-            <Input
-              id="project"
-              placeholder="e.g., ai-playground"
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-            />
-          </div>
+
+
 
           {/* Test Connection */}
           <div className="flex items-center justify-between pt-2">
             <Button
               variant="outline"
               onClick={testConnection}
-              disabled={isTestingConnection || !apiKey || !team || !project}
+              disabled={isTestingConnection || !apiKey}
             >
               {isTestingConnection ? "Testing..." : "Test Connection"}
             </Button>

@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TASKS, Task, getTasksByCategory } from '@/lib/tasks';
-import { MODELS, ALL_MODELS } from '@/lib/wandb-client';
+import { TASKS, Task } from '@/lib/tasks';
+import { ALL_MODELS } from '@/lib/wandb-client';
 import { isWandbConfigured, getWandbSettings, WandbSettings } from '@/lib/settings';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { ExportDialog } from '@/components/export-dialog';
-import { getRequestDataFromPlayground, RequestData } from '@/lib/code-generators';
-import { Loader2, Play, Copy, Download, Sparkles, Code, Brain, Eye, Palette, BarChart, Zap, MessageSquare, Settings, ExternalLink, Code2 } from 'lucide-react';
+import { getRequestDataFromPlayground } from '@/lib/code-generators';
+import { Loader2, Play, Copy, Download, Zap, Settings, ExternalLink, Code2, Search, Filter } from 'lucide-react';
 
 interface ApiModel {
   id: string;
@@ -27,14 +27,7 @@ interface ApiModel {
 
 type PlaygroundMode = 'templates' | 'blank';
 
-const categoryIcons = {
-  text: MessageSquare,
-  reasoning: Brain,
-  code: Code,
-  vision: Eye,
-  creative: Palette,
-  analysis: BarChart,
-};
+
 
 interface PlaygroundProps {
   userSettings?: WandbSettings | null;
@@ -61,30 +54,19 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
   const [isConfigured, setIsConfigured] = useState(false);
   const [currentSettings, setCurrentSettings] = useState<WandbSettings | null>(null);
   
-  // Export state
-  const [lastRequestData, setLastRequestData] = useState<RequestData | null>(null);
-  
-  // UI state
-  const [activeTab, setActiveTab] = useState('all');
-  const [isMobile, setIsMobile] = useState(false);
 
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showModels, setShowModels] = useState(false);
+  
   // Check configuration and load settings
   useEffect(() => {
     const settings = userSettings || getWandbSettings();
     setCurrentSettings(settings);
     setIsConfigured(isWandbConfigured());
   }, [userSettings]);
-
-  // Detect mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Fetch models from API
   useEffect(() => {
@@ -98,8 +80,6 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
         const response = await fetch('/api/models', {
           headers: {
             'X-WandB-API-Key': currentSettings.apiKey,
-            'X-WandB-Team': currentSettings.team,
-            'X-WandB-Project': currentSettings.project,
           },
         });
         const data = await response.json();
@@ -126,7 +106,8 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
   const availableModels = useMemo(() => {
     if (mode === 'blank' && apiModels.length > 0) {
       return apiModels.reduce((acc, model) => {
-        acc[model.id] = model.id.split('/').pop() || model.id;
+        const parts = model.id.split('/');
+        acc[model.id] = parts[parts.length - 1] || model.id;
         return acc;
       }, {} as Record<string, string>);
     }
@@ -137,6 +118,35 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
   const getModelName = (modelId: string): string => {
     return availableModels[modelId as keyof typeof availableModels] || modelId;
   };
+
+  // Filtered tasks based on search and category
+  const filteredTasks = useMemo(() => {
+    return TASKS.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           task.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, selectedCategory]);
+
+  // Get unique categories
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(TASKS.map(task => task.category)));
+    return ['all', ...cats];
+  }, []);
+
+  // Available models as cards
+  const modelCards = useMemo(() => {
+    const models = Object.entries(availableModels);
+    if (searchQuery) {
+      return models.filter(([id, name]) => 
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    return models;
+  }, [availableModels, searchQuery]);
 
   // Handle task changes
   const handleTaskChange = (taskId: string) => {
@@ -155,6 +165,7 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
     setMode(newMode);
     setResponse('');
     setIsResponseVisible(false);
+    setShowModels(false);
     
     if (newMode === 'blank') {
       setPrompt('');
@@ -173,28 +184,7 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
     onSettingsChange?.(settings);
   };
 
-  // Update request data whenever form changes
-  const updateRequestData = useCallback(() => {
-    if (!isConfigured || !currentSettings || !prompt.trim()) {
-      setLastRequestData(null);
-      return;
-    }
 
-    const requestData = getRequestDataFromPlayground(
-      mode,
-      selectedTask,
-      prompt,
-      selectedModel,
-      imageUrl,
-      currentSettings
-    );
-    setLastRequestData(requestData);
-  }, [mode, selectedTask, prompt, selectedModel, imageUrl, currentSettings, isConfigured]);
-
-  // Update request data when form changes
-  useEffect(() => {
-    updateRequestData();
-  }, [updateRequestData]);
 
   // Generate response
   const handleGenerate = async () => {
@@ -231,8 +221,6 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
         headers: {
           'Content-Type': 'application/json',
           'X-WandB-API-Key': currentSettings.apiKey,
-          'X-WandB-Team': currentSettings.team,
-          'X-WandB-Project': currentSettings.project,
         },
         body: JSON.stringify(requestBody),
       });
@@ -308,7 +296,7 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
               Configure Settings
             </h3>
             <p className="text-muted-foreground mb-3">
-              Enter your WandB team name, project name, and API key in the settings dialog.
+              Enter your WandB API key in the settings dialog.
             </p>
             <SettingsDialog 
               onSettingsChange={handleSettingsChange}
@@ -351,316 +339,312 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Mode Toggle */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">AI Playground</h2>
-          <p className="text-muted-foreground mt-1">Choose a template or start from scratch</p>
+    <div className="w-full max-w-7xl mx-auto p-3 lg:p-4 space-y-4">
+      {/* Compact Header with Search */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl lg:text-2xl font-bold">AI Playground</h2>
+            <p className="text-sm text-muted-foreground">Choose a task or model to get started</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={showModels ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowModels(!showModels)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              {showModels ? 'Show Tasks' : 'Show Models'}
+            </Button>
+            <Button
+              variant={mode === 'blank' ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleModeChange('blank')}
+              className="flex items-center gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              Custom
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex bg-muted rounded-lg p-1">
-          <Button
-            variant={mode === 'templates' ? "default" : "ghost"}
-            size="sm"
-            onClick={() => handleModeChange('templates')}
-            className="h-8 px-3"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Templates
-          </Button>
-          <Button
-            variant={mode === 'blank' ? "default" : "ghost"}
-            size="sm"
-            onClick={() => handleModeChange('blank')}
-            className="h-8 px-3"
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            Blank
-          </Button>
+
+        {/* Search and Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={showModels ? "Search models..." : "Search tasks..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          {!showModels && (
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(cat => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat === 'all' ? 'All Categories' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sidebar */}
-        <div className="lg:col-span-4 xl:col-span-3">
-          {mode === 'templates' ? (
-            <Card className="h-fit max-h-[70vh] overflow-hidden">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Task Templates</CardTitle>
-                <CardDescription>Pre-configured AI tasks</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-3 w-full mx-4 mb-4">
-                    <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                    <TabsTrigger value="categories" className="text-xs">Categories</TabsTrigger>
-                    <TabsTrigger value="models" className="text-xs">Models</TabsTrigger>
-                  </TabsList>
-                  
-                  <div className="max-h-[50vh] overflow-y-auto px-4 pb-4 space-y-2">
-                    <TabsContent value="all" className="mt-0 space-y-2">
-                      {TASKS.map((task) => (
-                        <Button
-                          key={task.id}
-                          variant={selectedTask.id === task.id ? "default" : "ghost"}
-                          className="w-full justify-start h-auto p-3 text-left"
-                          onClick={() => handleTaskChange(task.id)}
-                        >
-                          <div className="flex items-start space-x-3 w-full">
-                            <span className="text-lg flex-shrink-0">{task.icon}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">{task.title}</div>
-                              <div className="text-xs text-muted-foreground truncate mt-1">
-                                {task.description}
-                              </div>
-                            </div>
-                          </div>
-                        </Button>
-                      ))}
-                    </TabsContent>
-                    
-                    <TabsContent value="categories" className="mt-0 space-y-3">
-                      {['text', 'reasoning', 'code', 'vision', 'creative', 'analysis'].map((category) => {
-                        const Icon = categoryIcons[category as keyof typeof categoryIcons];
-                        const tasks = getTasksByCategory(category as Task['category']);
-                        
-                        return (
-                          <div key={category} className="space-y-2">
-                            <div className="flex items-center space-x-2 px-2">
-                              <Icon className="w-4 h-4" />
-                              <h3 className="font-medium text-sm capitalize">{category}</h3>
-                            </div>
-                            <div className="space-y-1 pl-6">
-                              {tasks.map((task) => (
-                                <Button
-                                  key={task.id}
-                                  variant={selectedTask.id === task.id ? "default" : "ghost"}
-                                  size="sm"
-                                  className="w-full justify-start h-8 text-xs"
-                                  onClick={() => handleTaskChange(task.id)}
-                                >
-                                  <span className="mr-2">{task.icon}</span>
-                                  {task.title}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </TabsContent>
-                    
-                    <TabsContent value="models" className="mt-0 space-y-2">
-                      {Object.entries(MODELS).map(([category, models]) => (
-                        <div key={category} className="space-y-2">
-                          <h3 className="font-medium text-sm capitalize px-2">
-                            {category.replace('_', ' ').toLowerCase()}
-                          </h3>
-                          <div className="space-y-1">
-                            {Object.entries(models).map(([modelId, modelName]) => {
-                              const tasksForModel = TASKS.filter(task => task.model === modelId);
-                              return (
-                                <div key={modelId} className="border rounded-lg p-2 space-y-2">
-                                  <div>
-                                    <div className="font-medium text-xs">{modelName}</div>
-                                    <div className="text-xs text-muted-foreground truncate">{modelId}</div>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {tasksForModel.map((task) => (
-                                      <Button
-                                        key={task.id}
-                                        variant={selectedTask.id === task.id ? "default" : "outline"}
-                                        size="sm"
-                                        className="h-6 px-2 text-xs"
-                                        onClick={() => handleTaskChange(task.id)}
-                                      >
-                                        <span className="mr-1">{task.icon}</span>
-                                        {task.title}
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Blank Playground</CardTitle>
-                <CardDescription>Start with any model and prompt</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Zap className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground">
-                    Use the configuration panel to select a model and start chatting.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Main Content */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-          {/* Task Info (Templates mode only) */}
-          {mode === 'templates' && (
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-2">
-                  <span className="text-2xl">{selectedTask.icon}</span>
-                  <span>{selectedTask.title}</span>
-                </CardTitle>
-                <CardDescription>{selectedTask.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-
-          {/* Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="model">Model</Label>
-                                     {isLoadingModels ? (
-                     <Skeleton className="h-14 w-full" />
-                   ) : (
-                     <Select value={selectedModel} onValueChange={setSelectedModel}>
-                       <SelectTrigger className="h-auto min-h-[3rem] p-3 text-left">
-                         <SelectValue placeholder="Select a model">
-                           {selectedModel ? (
-                             <div className="flex flex-col items-start space-y-0.5 w-full">
-                               <span className="font-semibold text-sm leading-tight">{getModelName(selectedModel)}</span>
-                               <span className="text-xs text-muted-foreground leading-tight truncate w-full pr-6">{selectedModel}</span>
-                             </div>
-                           ) : (
-                             <span className="text-muted-foreground">Select a model</span>
-                           )}
-                         </SelectValue>
-                       </SelectTrigger>
-                       <SelectContent className="max-h-[300px]">
-                         {Object.entries(availableModels).map(([modelId, modelName]) => (
-                           <SelectItem key={modelId} value={modelId} className="py-3">
-                             <div className="flex flex-col items-start space-y-1 w-full">
-                               <span className="font-medium text-sm">{modelName}</span>
-                               <span className="text-xs text-muted-foreground truncate max-w-[300px]">{modelId}</span>
-                             </div>
-                           </SelectItem>
-                         ))}
-                       </SelectContent>
-                     </Select>
-                   )}
-                  {modelsError && (
-                    <p className="text-xs text-destructive mt-1">
-                      Failed to load models: {modelsError}
-                    </p>
-                  )}
-                </div>
-
-                {mode === 'templates' && selectedTask.category === 'vision' && (
-                  <div>
-                    <Label htmlFor="imageUrl">Image URL</Label>
-                    <Input
-                      id="imageUrl"
-                      placeholder="Enter image URL..."
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="prompt">
-                  {mode === 'templates' ? 'Prompt' : 'Your message'}
-                </Label>
-                <Textarea
-                  id="prompt"
-                  placeholder={mode === 'templates' ? "Enter your prompt..." : "Ask anything..."}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={isMobile ? 3 : 4}
-                  className="resize-none"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={handleGenerate} 
-                  disabled={isGenerating || !prompt.trim() || !isConfigured}
-                  className="flex-1 sm:flex-initial"
-                  size={isMobile ? "default" : "lg"}
+      {/* Content Grid */}
+      <div className="space-y-4">
+        {showModels ? (
+          /* Model Cards */
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Available Models ({modelCards.length})
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {modelCards.map(([modelId, modelName]) => (
+                <Card 
+                  key={modelId}
+                  className={`cursor-pointer transition-all hover:shadow-sm hover:border-primary/50 ${
+                    selectedModel === modelId ? 'ring-1 ring-primary border-primary' : ''
+                  }`}
+                  onClick={() => setSelectedModel(modelId)}
                 >
-                  {isGenerating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-4 w-4" />
-                  )}
-                  {isGenerating ? 'Generating...' : 'Generate'}
-                </Button>
-                
-                {lastRequestData && (
-                  <ExportDialog 
-                    requestData={lastRequestData}
-                    trigger={
-                      <Button variant="outline" size={isMobile ? "default" : "lg"} className="flex-1 sm:flex-initial">
-                        <Code2 className="mr-2 h-4 w-4" />
-                        Export Code
-                      </Button>
-                    }
-                  />
-                )}
-              </div>
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-medium text-sm leading-tight">{modelName}</h4>
+                        {selectedModel === modelId && (
+                          <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1"></div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-tight truncate">
+                        {modelId}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : mode === 'templates' ? (
+          /* Task Cards */
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Available Tasks ({filteredTasks.length})
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredTasks.map((task) => (
+                <Card 
+                  key={task.id} 
+                  className={`cursor-pointer transition-all hover:shadow-sm hover:border-primary/50 ${
+                    selectedTask.id === task.id ? 'ring-1 ring-primary border-primary' : ''
+                  }`}
+                  onClick={() => handleTaskChange(task.id)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl flex-shrink-0">{task.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm leading-tight">{task.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-1 leading-tight line-clamp-2">
+                          {task.description}
+                        </p>
+                        <div className="flex items-center gap-1 mt-2">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/60"></span>
+                          <span className="text-xs text-muted-foreground capitalize">{task.category}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Custom Mode */
+          <Card className="border-dashed border-2">
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <Zap className="w-10 h-10 text-muted-foreground mb-3" />
+              <h4 className="text-base font-medium">Custom Playground</h4>
+              <p className="text-sm text-muted-foreground text-center max-w-md">
+                Start with any model and create your own prompts.
+              </p>
             </CardContent>
           </Card>
-
-          {/* Response */}
-          {isResponseVisible && (
-            <Card className="transition-all duration-300 ease-in-out">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                                   <CardTitle>Response</CardTitle>
-                 {response && (
-                   <div className="flex items-center space-x-2">
-                     <Button variant="outline" size="sm" onClick={copyToClipboard}>
-                       <Copy className="h-4 w-4" />
-                       {!isMobile && <span className="ml-2">Copy</span>}
-                     </Button>
-                     <Button variant="outline" size="sm" onClick={downloadResponse}>
-                       <Download className="h-4 w-4" />
-                       {!isMobile && <span className="ml-2">Download</span>}
-                     </Button>
-                   </div>
-                 )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isGenerating ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-4/5" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                ) : (
-                  <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap font-mono text-sm max-h-96 overflow-y-auto">
-                    {response || 'No response yet...'}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        )}
       </div>
+
+      {/* Configuration - Compact */}
+      {(mode === 'blank' || selectedTask) && (
+        <Card>
+          <CardHeader className="pb-3">
+            {mode === 'templates' && selectedTask && (
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{selectedTask.icon}</span>
+                <div>
+                  <CardTitle className="text-lg">{selectedTask.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{selectedTask.description}</p>
+                </div>
+              </div>
+            )}
+            {mode === 'blank' && (
+              <div className="flex items-center gap-3">
+                <Zap className="w-5 h-5" />
+                <CardTitle className="text-lg">Custom Playground</CardTitle>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="model" className="text-sm">Model</Label>
+                {isLoadingModels ? (
+                  <Skeleton className="h-9 w-full" />
+                ) : (
+                  <Select value={selectedModel} onValueChange={setSelectedModel}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select a model">
+                        {selectedModel ? (
+                          <div className="flex flex-col items-start w-full">
+                            <span className="font-medium text-sm truncate">{getModelName(selectedModel)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Select a model</span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {Object.entries(availableModels).map(([modelId, modelName]) => (
+                        <SelectItem key={modelId} value={modelId} className="py-2">
+                          <div className="flex flex-col items-start w-full">
+                            <span className="font-medium text-sm">{modelName}</span>
+                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">{modelId}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {modelsError && (
+                  <p className="text-xs text-destructive mt-1">
+                    Failed to load models: {modelsError}
+                  </p>
+                )}
+              </div>
+
+              {mode === 'templates' && selectedTask.category === 'vision' && (
+                <div>
+                  <Label htmlFor="imageUrl" className="text-sm">Image URL</Label>
+                  <Input
+                    id="imageUrl"
+                    placeholder="Enter image URL..."
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="prompt" className="text-sm">
+                {mode === 'templates' ? 'Prompt' : 'Your message'}
+              </Label>
+              <Textarea
+                id="prompt"
+                placeholder={mode === 'templates' ? "Enter your prompt..." : "Ask anything..."}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={4}
+                className="resize-none text-sm"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleGenerate} 
+                disabled={isGenerating || !prompt.trim() || !isConfigured}
+                className="flex-1"
+              >
+                {isGenerating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="mr-2 h-4 w-4" />
+                )}
+                {isGenerating ? 'Generating...' : 'Generate'}
+              </Button>
+              
+              <ExportDialog 
+                requestData={currentSettings ? getRequestDataFromPlayground(
+                  mode,
+                  selectedTask,
+                  prompt,
+                  selectedModel,
+                  imageUrl,
+                  currentSettings
+                ) : {
+                  endpoint: '/chat/completions',
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: { model: selectedModel, messages: [{ role: 'user', content: prompt }] },
+                  settings: { apiKey: '' }
+                }}
+                trigger={
+                  <Button 
+                    variant="secondary" 
+                    className="bg-amber-500 hover:bg-amber-600 text-white border-amber-500 hover:border-amber-600"
+                    disabled={!prompt.trim() || !selectedModel || !isConfigured}
+                  >
+                    <Code2 className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                }
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Response - Compact */}
+      {isResponseVisible && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Response</CardTitle>
+              {response && (
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                    <Copy className="h-4 w-4" />
+                    <span className="ml-1 hidden sm:inline text-xs">Copy</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={downloadResponse}>
+                    <Download className="h-4 w-4" />
+                    <span className="ml-1 hidden sm:inline text-xs">Download</span>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isGenerating ? (
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+            ) : (
+              <div className="bg-muted p-3 rounded-md whitespace-pre-wrap font-mono text-xs max-h-80 overflow-y-auto border">
+                {response || 'No response yet...'}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

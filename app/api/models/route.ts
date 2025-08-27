@@ -5,10 +5,10 @@ export const runtime = 'edge';
 export async function GET(request: Request) {
   try {
     // Get user settings from headers
-    const { apiKey, team, project } = getSettingsFromHeaders(request);
+    const { apiKey } = getSettingsFromHeaders(request);
     
     // Create WandB client with user settings
-    const wandbClient = createWandbClient(apiKey || undefined, team || undefined, project || undefined);
+    const wandbClient = createWandbClient(apiKey || undefined);
 
     // Fetch available models from WandB API
     const response = await wandbClient.models.list();

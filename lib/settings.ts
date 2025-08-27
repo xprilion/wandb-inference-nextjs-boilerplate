@@ -1,7 +1,5 @@
 export interface WandbSettings {
   apiKey: string;
-  team: string;
-  project: string;
 }
 
 const SETTINGS_KEY = 'wandb-settings';
@@ -16,7 +14,7 @@ export function getWandbSettings(): WandbSettings | null {
     const settings = JSON.parse(stored) as WandbSettings;
     
     // Validate that all required fields are present
-    if (!settings.apiKey || !settings.team || !settings.project) {
+    if (!settings.apiKey) {
       return null;
     }
     
@@ -56,17 +54,7 @@ export function validateWandbSettings(settings: Partial<WandbSettings>): string[
     errors.push('API Key appears to be invalid (too short)');
   }
   
-  if (!settings.team?.trim()) {
-    errors.push('Team name is required');
-  } else if (!/^[a-zA-Z0-9_-]+$/.test(settings.team)) {
-    errors.push('Team name can only contain letters, numbers, hyphens, and underscores');
-  }
-  
-  if (!settings.project?.trim()) {
-    errors.push('Project name is required');
-  } else if (!/^[a-zA-Z0-9_-]+$/.test(settings.project)) {
-    errors.push('Project name can only contain letters, numbers, hyphens, and underscores');
-  }
+
   
   return errors;
 }

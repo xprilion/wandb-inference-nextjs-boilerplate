@@ -21,7 +21,6 @@ export function generateCurlCommand(request: RequestData): string {
   // Add headers
   curlCommand += `  -H "Content-Type: application/json" \\\n`;
   curlCommand += `  -H "Authorization: Bearer ${maskApiKey(settings.apiKey)}" \\\n`;
-  curlCommand += `  -H "OpenAI-Project: ${settings.team}/${settings.project}" \\\n`;
   
   // Add body if present
   if (body && Object.keys(body).length > 0) {
@@ -43,7 +42,7 @@ export function generatePythonCode(request: RequestData): string {
   pythonCode += `    default_headers={\n`;
   pythonCode += `        'Content-Type': 'application/json',\n`;
   pythonCode += `        'Authorization': 'Bearer ${maskApiKey(settings.apiKey)}',\n`;
-  pythonCode += `        'OpenAI-Project': '${settings.team}/${settings.project}',\n`;
+
   pythonCode += `    },\n`;
   pythonCode += `)\n\n`;
   
@@ -81,7 +80,7 @@ export function generateTypeScriptCode(request: RequestData): string {
   tsCode += `  defaultHeaders: {\n`;
   tsCode += `    'Content-Type': 'application/json',\n`;
   tsCode += `    'Authorization': 'Bearer ${maskApiKey(settings.apiKey)}',\n`;
-  tsCode += `    'OpenAI-Project': '${settings.team}/${settings.project}',\n`;
+
   tsCode += `  },\n`;
   tsCode += `});\n\n`;
   
@@ -185,7 +184,6 @@ export function getRequestDataFromPlayground(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${settings.apiKey}`,
-      'OpenAI-Project': `${settings.team}/${settings.project}`,
     },
     body,
     settings,
