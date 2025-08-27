@@ -6,6 +6,7 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { Github, ExternalLink, Menu, X, Settings, CheckCircle, AlertCircle } from "lucide-react";
 import { isWandbConfigured, WandbSettings } from "@/lib/settings";
+import Image from "next/image";
 
 interface HeaderProps {
   onSettingsChange?: (settings: WandbSettings | null) => void;
@@ -28,8 +29,8 @@ export function Header({ onSettingsChange }: HeaderProps) {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-sm">W</span>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Image src="/logo.jpg" alt="WandB Logo" width={32} height={32} />
           </div>
           <div className="hidden sm:block">
             <h1 className="text-lg font-semibold leading-tight">WandB Inference</h1>
