@@ -57,11 +57,13 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
     
     try {
       // Test the connection by making a request to our API with the settings
-      const response = await fetch('/api/models', {
+      const response = await fetch(`/api/models?cb=${Date.now()}`, {
         method: 'GET',
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           'X-WandB-API-Key': apiKey,
+          'X-No-Cache': '1',
           ...(project?.trim() ? { 'OpenAI-Project': project.trim() } : {}),
         },
       });

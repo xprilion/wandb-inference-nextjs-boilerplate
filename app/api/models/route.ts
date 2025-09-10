@@ -13,15 +13,22 @@ export async function GET(request: Request) {
     // Fetch available models from WandB API
     const response = await wandbClient.models.list();
 
+    const noCache = request.headers.get('X-No-Cache') === '1';
+
     return new Response(
       JSON.stringify({ 
         models: response.data || []
       }),
       {
         status: 200,
-        headers: { 
+        headers: noCache ? {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        } : {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=300'
         },
       }
     );
