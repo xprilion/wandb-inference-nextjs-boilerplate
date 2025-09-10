@@ -80,6 +80,7 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
         const response = await fetch('/api/models', {
           headers: {
             'X-WandB-API-Key': currentSettings.apiKey,
+            ...(currentSettings.project ? { 'OpenAI-Project': currentSettings.project } : {}),
           },
         });
         const data = await response.json();
@@ -221,6 +222,7 @@ export function Playground({ userSettings, onSettingsChange }: PlaygroundProps) 
         headers: {
           'Content-Type': 'application/json',
           'X-WandB-API-Key': currentSettings.apiKey,
+          ...(currentSettings.project ? { 'OpenAI-Project': currentSettings.project } : {}),
         },
         body: JSON.stringify(requestBody),
       });

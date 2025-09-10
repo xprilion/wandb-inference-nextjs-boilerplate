@@ -17,10 +17,10 @@ export async function POST(req: Request) {
     }
 
     // Get user settings from headers
-    const { apiKey } = getSettingsFromHeaders(req);
+    const { apiKey, project } = getSettingsFromHeaders(req);
     
     // Create WandB client with user settings
-    const wandbClient = createWandbClient(apiKey || undefined);
+    const wandbClient = createWandbClient(apiKey || undefined, project);
 
     // Prepare messages for vision model
     const visionMessages = messages || [

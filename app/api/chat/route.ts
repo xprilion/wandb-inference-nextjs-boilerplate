@@ -7,10 +7,10 @@ export async function POST(req: Request) {
     const { messages, model = 'moonshotai/Kimi-K2-Instruct' } = await req.json();
 
     // Get user settings from headers
-    const { apiKey } = getSettingsFromHeaders(req);
+    const { apiKey, project } = getSettingsFromHeaders(req);
     
     // Create WandB client with user settings
-    const wandbClient = createWandbClient(apiKey || undefined);
+    const wandbClient = createWandbClient(apiKey || undefined, project);
 
     // Use the WandB client directly for streaming
     const response = await wandbClient.chat.completions.create({

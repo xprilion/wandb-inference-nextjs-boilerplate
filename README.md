@@ -43,7 +43,7 @@ You have two options for configuring WandB credentials:
 2. Click the **Settings** button in the top-right corner
 3. Follow the setup wizard:
    - Get your API key from [wandb.ai/authorize](https://wandb.ai/authorize)
-   - Enter your team name and project name
+   - Optionally set your project as `entity_name/project_name`
    - Test the connection and save
 
 #### Option B: Environment Variables
@@ -207,7 +207,7 @@ This project uses WandB Inference as an OpenAI-compatible API. The integration i
 
 ### API Headers Configuration
 
-The WandB Inference API requires specific headers for authentication and project tracking:
+The WandB Inference API requires specific headers for authentication and (optionally) project tracking:
 
 ```bash
 curl https://api.inference.wandb.ai/v1/chat/completions \
@@ -222,6 +222,9 @@ curl https://api.inference.wandb.ai/v1/chat/completions \
     ]
   }'
 ```
+
+Notes:
+- If you don’t set `OpenAI-Project`, the API may default to your personal team/project, which can lead to unexpected results. Set it to `entity_name/project_name` (e.g., `my-entity/my-project`).
 
 ### Python Equivalent
 

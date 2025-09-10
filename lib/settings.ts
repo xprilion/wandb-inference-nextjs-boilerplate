@@ -1,5 +1,6 @@
 export interface WandbSettings {
   apiKey: string;
+  project?: string;
 }
 
 const SETTINGS_KEY = 'wandb-settings';
@@ -54,7 +55,13 @@ export function validateWandbSettings(settings: Partial<WandbSettings>): string[
     errors.push('API Key appears to be invalid (too short)');
   }
   
-
+  // Optional project format check if provided
+  if (settings.project && settings.project.trim()) {
+    const value = settings.project.trim();
+    if (!value.includes('/')) {
+      errors.push('Project must be in the format entity_name/project_name');
+    }
+  }
   
   return errors;
 }

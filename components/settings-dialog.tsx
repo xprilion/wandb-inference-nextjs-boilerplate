@@ -23,7 +23,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState("");
-
+  const [project, setProject] = useState("");
 
   const [showApiKey, setShowApiKey] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -36,8 +36,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
       const settings = getWandbSettings();
       if (settings) {
         setApiKey(settings.apiKey);
-
-
+        setProject(settings.project || "");
       }
       setErrors([]);
       setConnectionStatus('idle');
@@ -45,7 +44,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
   }, [open]);
 
   const testConnection = async () => {
-    const tempSettings = { apiKey };
+    const tempSettings = { apiKey, project: project?.trim() || undefined };
     const validationErrors = validateWandbSettings(tempSettings);
     
     if (validationErrors.length > 0) {
@@ -63,8 +62,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
         headers: {
           'Content-Type': 'application/json',
           'X-WandB-API-Key': apiKey,
-
-
+          ...(project?.trim() ? { 'OpenAI-Project': project.trim() } : {}),
         },
       });
 
@@ -73,7 +71,11 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
       } else {
         const errorData = await response.json();
         setConnectionStatus('error');
-        setErrors([errorData.error || 'Failed to connect to WandB API']);
+        const errorMessages = [errorData.error || 'Failed to connect to WandB API'];
+        if (!project?.trim()) {
+          errorMessages.push('Tip: Set project as entity_name/project_name to avoid defaulting to personal project');
+        }
+        setErrors(errorMessages);
       }
     } catch (error) {
       setConnectionStatus('error');
@@ -84,7 +86,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
   };
 
   const handleSave = () => {
-    const settings: WandbSettings = { apiKey };
+    const settings: WandbSettings = { apiKey, project: project?.trim() || undefined };
     const validationErrors = validateWandbSettings(settings);
     
     if (validationErrors.length > 0) {
@@ -100,8 +102,7 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
   const handleClear = () => {
     clearWandbSettings();
     setApiKey("");
-
-
+    setProject("");
     setErrors([]);
     setConnectionStatus('idle');
     onSettingsChange?.(null);
@@ -141,8 +142,6 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
                   <ExternalLink className="h-3 w-3 ml-1" />
                 </a>
               </li>
-
-
               <li>Test the connection and save</li>
             </ol>
           </div>
@@ -171,9 +170,20 @@ export function SettingsDialog({ onSettingsChange, trigger }: SettingsDialogProp
             </div>
           </div>
 
-
-
-
+          {/* WandB Project (optional) */}
+          <div className="space-y-2">
+            <Label htmlFor="project">WandB Project (optional)</Label>
+            <Input
+              id="project"
+              type="text"
+              placeholder="entity_name/project_name"
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Sent as <code>OpenAI-Project</code> header, e.g. <code>my-entity/my-project</code>.
+            </p>
+          </div>
 
           {/* Test Connection */}
           <div className="flex items-center justify-between pt-2">
